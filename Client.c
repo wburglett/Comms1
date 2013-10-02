@@ -3,8 +3,11 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+#define STDIN 0
+
 int main (int argc, char **argv) {
-	int status = 0;	
+	int status = 0;
+	int breakout = 1;
 	int lport = 34789;
 	
 	if (argc == 2) {
@@ -27,9 +30,13 @@ int main (int argc, char **argv) {
 		perror("Connection Failed");
 	}
 
-	char *d = "Tester";
-	if (status = send(s, d, sizeof(d), 0) > 0) {
-		perror ("Sent");
+	char d[100];
+
+	while (breakout == 1) {
+		breakout = read(0, d, sizeof(d));
+		if (status = send(s, d, sizeof(d), 0) > 0) {
+			perror ("Sent");
+		}
 	}
 
 	if ((status = close(s)) == 0) {
