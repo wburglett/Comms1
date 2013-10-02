@@ -3,11 +3,15 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <signal.h>
 
 #define STDIN 0
 #define USERS 9
 
 int main (int argc, char **argv) {
+	signal(SIGPIPE, SIG_IGN);
+	setvbuf(stdout, NULL, _IONBF, 0);
+
 	int i = 0;
 	int j = 0;
 	int cllen = 0;
@@ -19,10 +23,20 @@ int main (int argc, char **argv) {
 	int lport = 34789;
 	int clientmax = 0;
 
+	char *search = " ";
+	char *user;
+	char *pass;
+
+	char welcome[1] = "0";
+	char incorrect[1] = "1";
+	char lock[1] = "2";
+	char input[1] = "3";
+	char broad[1] = "5";
+
 	char cldata[100];
 	char *auth[USERS][2];
 	int timestamps[USERS][2];
-
+	
 	memset(cldata, '\0', sizeof(cldata[0]) * 100);
 	memset(auth, '\0', sizeof(auth[0][0]) * 10 * 2);
 	memset(timestamps, 0, sizeof(timestamps[0][0]) * 10 * 2);
@@ -87,7 +101,6 @@ int main (int argc, char **argv) {
 	clientmax = s;
 
 	printf("Please enter a command: ");
-	fflush(stdout);
 
 	while (breakout == 1) {
 		clients = lisocks;
@@ -106,7 +119,9 @@ int main (int argc, char **argv) {
 					else {
 						FD_SET(clsock, &lisocks);
 						if (clsock > clientmax) clientmax = clsock;
-						
+						if ((status = send(clsock, &welcome, sizeof(welcome), 0)) <= 0) {
+							perror("Send");
+						}
 					}
 				}
 				else if (i == STDIN) {
@@ -140,17 +155,39 @@ int main (int argc, char **argv) {
 							printf("%s is not a valid command\n\n", cldata);
 						}
 						printf("Please enter a command: ");
-						fflush(stdout);
 						memset(cldata, '\0', 100);
 					}
 				}
 				else {
-					if (dalen = recv(i, cldata, sizeof(cldata), 0)) {
-						printf("%d %s\n", dalen, cldata);
-						memset(cldata, '\0', 100);
+					if ((dalen = recv(i, cldata, sizeof(cldata), 0)) <= 0) {
+						
 					}
 					else {
+						if (cldata[0] == '0') {
+							user = strtok(cldata, search);
+							pass = strtok(NULL, search);
+
+							printf("%s--%s\n", user+2, pass);
+
+							for (j=0; j<=USERS; j++) {		
+								if (auth[j][0] == "hi") {
+									
+								}
+							}
+
+							if (cldata[1] >= 2) {
+								if ((status = send(clsock, &lock, sizeof(lock), 0)) <= 0) {
+									perror("Send");
+								}
+							}
+							else {
+								if ((status = send(clsock, &incorrect, sizeof(incorrect), 0)) <= 0) {
+									perror("Send");
+								}
+							}
+						}
 					}
+					memset(cldata, '\0', 100);
 				}
 			}
 		}
