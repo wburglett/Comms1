@@ -72,17 +72,53 @@ int main (int argc, char **argv) {
 				perror ("On auth send");
 			}
 			tries++;
+			memset(auth, '\0', sizeof(auth[0]) * 100);
 		}
 		else if (indata[0] == incorrect[0]) {
 			printf("Bad Login\n");
-			if (status = recv(s, &auth, sizeof(auth), 0) <= 0) {
+			auth[0] = '0';
+			auth[1] = 48 + tries;
+
+			printf("Username: ");
+			read(0, clin, sizeof(clin));
+			clin[strcspn(clin, "\n")] = '\0';
+			strcat(auth, clin);
+			strcat(auth, " ");
+
+			printf("Password: ");
+			read(0, clin, sizeof(clin));
+			clin[strcspn(clin, "\n")] = '\0';
+			strcat(auth, clin);
+
+			if (status = send(s, &auth, sizeof(auth), 0) <= 0) {
 				perror ("On auth send");
 			}
 			tries++;
+			memset(auth, '\0', sizeof(auth[0]) * 100);
 		}
 		else if (indata[0] == lock[0]) {
 			printf("Login Locked\n");
 			tries = 0;
+
+			auth[0] = '0';
+			auth[1] = 48 + tries;
+
+			printf("Username: ");
+			read(0, clin, sizeof(clin));
+			clin[strcspn(clin, "\n")] = '\0';
+			strcat(auth, clin);
+			strcat(auth, " ");
+
+			printf("Password: ");
+			read(0, clin, sizeof(clin));
+			clin[strcspn(clin, "\n")] = '\0';
+			strcat(auth, clin);
+
+			if (status = send(s, &auth, sizeof(auth), 0) <= 0) {
+				perror ("On auth send");
+			}
+			tries++;
+			memset(auth, '\0', sizeof(auth[0]) * 100);
 		}
 		else if (indata[0] == input[0]) {
 			printf("Data input\n");

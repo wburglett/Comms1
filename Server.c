@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <signal.h>
+#include <time.h>
 
 #define STDIN 0
 #define USERS 9
@@ -35,30 +36,23 @@ int main (int argc, char **argv) {
 
 	char cldata[100];
 	char *auth[USERS][2];
-	int timestamps[USERS][2];
+	long long timestamps[USERS][2];
 	
 	memset(cldata, '\0', sizeof(cldata[0]) * 100);
 	memset(auth, '\0', sizeof(auth[0][0]) * 10 * 2);
 	memset(timestamps, 0, sizeof(timestamps[0][0]) * 10 * 2);
 
-	auth[0][0] = "Columbia";
-	auth[0][1] = "116bway";
-	auth[1][0] = "SEAS";
-	auth[1][1] = "summerisover";
-	auth[2][0] = "csee4119";
-	auth[2][1] = "lotsofexams";
-	auth[3][0] = "foobar";
-	auth[3][1] = "passpass";
-	auth[4][0] = "windows";
-	auth[4][1] = "withglass";
-	auth[5][0] = "Google";
-	auth[5][1] = "hasglasses";
-	auth[6][0] = "facebook";
-	auth[6][1] = "wastingtime";
-	auth[7][0] = "wikipedia";
-	auth[7][1] = "donation";
-	auth[8][0] = "network";
-	auth[8][1] = "seemsez";
+	char temp1[100];
+	char temp2[100];
+
+	FILE* myfile=NULL;
+	myfile=fopen("Credentials.txt","r");
+	for(i=0; i<USERS; i++) {
+		fscanf(myfile, "%[^ \n] %[^ \n]\n", temp1, temp2);
+		auth[i][0] = temp1;
+		auth[i][1] = temp2;
+	}
+	fclose(myfile);
 
 	struct sockaddr_in saddr;
 	struct sockaddr *uaddr = (struct sockaddr *) &saddr;
@@ -128,22 +122,34 @@ int main (int argc, char **argv) {
 					if ((dalen = read(i, cldata, sizeof(cldata))) > 0) {
 						cldata[strlen(cldata)-1] = '\0';
 						if (!strcmp(cldata, "whoelse")) {
-							for (j=0; j<=USERS; j++) {		
+							for (j=0; j<USERS; j++) {		
 								if (timestamps[j][0] == 1) {
 									printf("%s, ", auth[j][0]);
 									present = 1;
 								}
-								if (present) {
-									printf("are here\n\n");
-									present = 0;
-								}
-								else {
-									printf("No users are here\n\n");
-								} 
 							}
+							if (present) {
+								printf("are here\n\n");
+								present = 0;
+							}
+							else {
+								printf("No users are here\n\n");
+							} 
 						}
 						else if (!strcmp(cldata, "wholasthr")) {
-							printf("wholasthring\n\n");
+							for (j=0; j<USERS; j++) {		
+								if (timestamps[j][1] > time(NULL) - 3600 || timestamps[j][0] == 1) {
+									printf("%s, ", auth[j][0]);
+									present = 1;
+								}
+							}
+							if (present) {
+								printf("were here in the last hour\n\n");
+								present = 0;
+							}
+							else {
+								printf("No users are here\n\n");
+							}
 						}
 						else if (!strcmp(cldata, "broadcast")) {
 							printf("broadcasting\n\n");
@@ -160,30 +166,40 @@ int main (int argc, char **argv) {
 				}
 				else {
 					if ((dalen = recv(i, cldata, sizeof(cldata), 0)) <= 0) {
-						
+						timestamps[j][0] = 0;
 					}
 					else {
 						if (cldata[0] == '0') {
-							user = strtok(cldata, search);
+							user = strtok(cldata, search)+2;
 							pass = strtok(NULL, search);
 
-							printf("%s--%s\n", user+2, pass);
+							printf("%s--%s\n", user, pass);
 
-							for (j=0; j<=USERS; j++) {		
-								if (auth[j][0] == "hi") {
-									
+							for (j=0; j<USERS; j++) {
+								printf("%s %s %s %s %d\n", auth[j][0], user, auth[j][1], pass, !strcmp(auth[j][0], user));
+								if (!strcmp(auth[j][0], user) && !strcmp(auth[j][1], pass)) {
+									timestamps[j][0] = 1;
+									timestamps[j][1] = time(NULL);
+									printf("Logged and timing %lld--%lld\n", timestamps[j][0], timestamps[j][1]);
+									present = 1;
+									break;
 								}
 							}
 
-							if (cldata[1] >= 2) {
-								if ((status = send(clsock, &lock, sizeof(lock), 0)) <= 0) {
-									perror("Send");
+							if (present == 0) {
+								if (cldata[1] >= '2') {
+									if ((status = send(clsock, &lock, sizeof(lock), 0)) <= 0) {
+										perror("Send");
+									}
+								}
+								else {
+									if ((status = send(clsock, &incorrect, sizeof(incorrect), 0)) <= 0) {
+										perror("Send");
+									}
 								}
 							}
 							else {
-								if ((status = send(clsock, &incorrect, sizeof(incorrect), 0)) <= 0) {
-									perror("Send");
-								}
+								present = 0;
 							}
 						}
 					}
