@@ -39,11 +39,18 @@ int main (int argc, char **argv) {
 	char lock[1] = "2";
 	char input[1] = "3";
 	char broad[1] = "4";
-	char disc[1] = "5";
+	char disc[2] = "5\0";
+	char who[2] = "6\0";
+	char hr[2] = "7\0";
+	char bc[2] = "8\0";
+
+	char *search = " "; // String pointer initiaization
+	char *end = "\0";
 	
 	char auth[100]; // Large array initilization
 	char indata[1000];
 	char clin[100];
+	char bmsg[100];
 
 	fd_set servers; // Socked list initilization
 	fd_set backup;
@@ -53,6 +60,7 @@ int main (int argc, char **argv) {
 	memset(auth, '\0', sizeof(auth[0]) * 100); // Memory setup for large arrays
 	memset(indata, '\0', sizeof(indata[0]) * 100);
 	memset(clin, '\0', sizeof(clin[0]) * 100);
+	memset(bmsg, '\0', sizeof(clin[0]) * 100);
 
 	if (argc == 3) {
 		laddr = inet_addr(argv[1]);
@@ -176,6 +184,20 @@ int main (int argc, char **argv) {
 									}
 									memset(clin, '\0', sizeof(clin[0]) * 100);
 								}
+
+								else if (!strcmp(clin, "whoelse")) { // ***
+									if (status = send(s, &who, sizeof(who), 0) <= 0) {
+										perror ("On who request send");
+									}
+									memset(clin, '\0', sizeof(clin[0]) * 100);
+								}
+								else if (!strcmp(clin, "wholasthr")) { // ***
+									if (status = send(s, &hr, sizeof(hr), 0) <= 0) {
+										perror ("On hr request send");
+									}
+									memset(clin, '\0', sizeof(clin[0]) * 100);
+								}
+
 								else if (!strcmp(clin, "quit")) { // Quit disconnects from the server
 									breakout = 0;
 									strcat(disc, auth);
@@ -183,6 +205,20 @@ int main (int argc, char **argv) {
 									if (status = send(s, &disc, 100*sizeof(char), 0) <= 0) {
 										perror ("On disc send");
 									}
+								}
+
+								else if (strcmp(clin, "") != 0 && strcmp(clin, "broadcast") != 0 && !strcmp(strtok(clin, search), "broadcast")) {
+									bmsg[0] = bc[0];
+									strcat(bmsg, strtok(NULL, end)); // The broadcast string is formed to be sent to all clients
+									if (status = send(s, &bmsg, sizeof(bmsg), 0) <= 0) {
+										perror ("On bc request send");
+									}
+									printf("Broadcast Complete\n\n");
+									memset(clin, '\0', sizeof(clin[0]) * 100);
+									memset(bmsg, '\0', sizeof(bmsg[0]) * 100);
+								}
+								else if (strcmp(clin, "broadcast") == 0) { // Broadcast error control
+									printf("Must broadcast some message\n\n");
 								}
 								else { // All other commands are invalid
 									printf("%s is not a valid command\n\nInput command: ", clin);
@@ -194,12 +230,20 @@ int main (int argc, char **argv) {
 								perror ("Forced disconnect");
 								breakout = 0;
 							}
-							else if (indata[0] == broad[0]) { // It could be presenting a broadcast, print it
+							else if (indata[0] == broad[0]) { // It could be presenting a server broadcast, print it
 								printf("-- SERVER BROADCAST: %s --\n", indata+1);
+								printf("Input command: ");
+							}
+							else if (indata[0] == bc[0]) { // It could be presenting a client broadcast, print it
+								printf("-- CLIENT BROADCAST: %s --\n", indata+1);
 								printf("Input command: ");
 							}
 							else if (indata[0] == input[0]) { // It could be presenting authentications, print them
 								printf("\nUsername - Password Combinations\n%s\n", indata+1);
+								printf("Input command: ");
+							}
+							else if (indata[0] == who[0] || indata[0] == hr[0]) {
+								printf("%s\n", indata+1);
 								printf("Input command: ");
 							}
 						}

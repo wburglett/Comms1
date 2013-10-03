@@ -61,10 +61,15 @@ int main (int argc, char **argv) {
 	char input[1] = "3";
 	char broad[1] = "4";
 	char disc[1] = "5";
+	char who[2] = "6\0";
+	char hr[2] = "7\0";
+	char bc[2] = "8\0";
 
 	char cldata[100]; // Large array initilization
 	char bmsg[100];
 	char *allauths = malloc(1000*sizeof(char));
+	char *allwho = malloc(1000*sizeof(char));
+	char *allhr = malloc(1000*sizeof(char));
 	char *auth[USERS][2];
 	long long timestamps[USERS][3];
 	long long iplocks[USERS][2];
@@ -120,7 +125,7 @@ int main (int argc, char **argv) {
 		printf("Socket Bound\n");
 	}
 	else {
-		perror("Bind Failed\n");
+		perror("Bind Failed -- Try Again");
 	}
 	if ((status = listen(s, 10)) == 0) { // Listening step
 		printf("Liste‌ning\n\n");
@@ -175,7 +180,7 @@ int main (int argc, char **argv) {
 							}
 							else {
 								printf("No users are here\n\n");
-							} 
+							}
 						}
 						else if (!strcmp(cldata, "wholasthr")) { // Wholasthr does that for the last hour
 							for (j=0; j<USERS; j++) {
@@ -197,7 +202,7 @@ int main (int argc, char **argv) {
 						else if (!strcmp(cldata, "quit")) { // Quit breaks out of the control loop
 							breakout = 0;
 						}
-						else if (strcmp(cldata, "broadcast") != 0 && !strcmp(strtok(cldata, search), "broadcast")) {
+						else if (strcmp(cldata, "") != 0 && strcmp(cldata, "broadcast") != 0 && !strcmp(strtok(cldata, search), "broadcast")) {
 							strcat(bmsg, strtok(NULL, end)); // The broadcast string is formed to be sent to all clients
 
 							for (j=0; j<=clientmax; j++) {			
@@ -213,7 +218,7 @@ int main (int argc, char **argv) {
 							memset(bmsg, '\0', sizeof(bmsg[0]) * 100);
 							bmsg[0] = broad[0];
 						}
-						else if (!strcmp(cldata, "broadcast") != 0) { // Broadcast error control
+						else if (strcmp(cldata, "broadcast") == 0) { // Broadcast error control
 							printf("Must broadcast some message\n\n");
 						}
 						else { // Step for invalid commands
@@ -285,9 +290,65 @@ int main (int argc, char **argv) {
 								perror("Send");
 							}
 						}
+						
+						// *********
+						else if (cldata[0] == who[0]) { // Returning the whoelse command
+							sprintf(allwho, "%s", who);
+							for (j=0; j<USERS; j++) {
+		 						addr.s_addr = timestamps[j][2];
+								if (timestamps[j][0] != 0) {
+									sprintf(allwho + strlen(allwho), "%s - %lld - %s\n", auth[j][0], timestamps[j][1], inet_ntoa(addr));
+									present = 1;
+								}
+							}
+							if (present) {
+								present = 0;
+							}
+							else {
+								sprintf(allwho + strlen(allwho), "No users are here\n\n");
+							}
+
+							if ((status = send(i, allwho, 1000*sizeof(char), 0)) <= 0) {
+								perror("Send");
+							}
+						}
+						else if (cldata[0] == hr[0]) { // Returning the wholasthr command
+							sprintf(allhr, "%s", hr);
+							for (j=0; j<USERS; j++) {
+       		 						addr.s_addr = timestamps[j][2];
+	
+								if (timestamps[j][1] > time(NULL) - 3600 || timestamps[j][0] != 0) {
+									sprintf(allhr + strlen(allhr), "%s - %lld - %s\n", auth[j][0], timestamps[j][1], inet_ntoa(addr));
+									present = 1;
+								}
+							}
+							if (present) {
+								present = 0;
+							}
+							else {
+								sprintf(allhr + strlen(allhr), "No users were here\n\n");
+							}
+
+							if ((status = send(i, allhr, 1000*sizeof(char), 0)) <= 0) {
+								perror("Send");
+							}
+						}
+						else if (cldata[0] == bc[0]) {
+							for (j=0; j<=clientmax; j++) {			
+								if (FD_ISSET(j, &lisocks)) {
+									if (j != s && j != STDIN) {
+										if ((status = send(j, &cldata, sizeof(cldata), 0)) <= 0) {
+											perror("Send");
+										}
+									}
+								}
+							}
+						}
+
 						else if (cldata[0] == disc[0]) { // If a disconnect is sent, remove the client
 							user = strtok(cldata, search)+3;
 							pass = strtok(NULL, search);
+
 							for (j=0; j<USERS; j++) {
 								if (!strcmp(auth[j][0], user) && !strcmp(auth[j][1], pass)) {
 									timestamps[j][0]--;
